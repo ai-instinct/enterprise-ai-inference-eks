@@ -1,5 +1,3 @@
-# Model store: weights pinned by content hash, never "latest" (problem 19).
-# Served to nodes via S3 Mountpoint CSI with a local NVMe cache.
 
 resource "aws_s3_bucket" "model_store" {
   bucket_prefix = "${var.project}-model-store-"
@@ -49,8 +47,6 @@ resource "aws_iam_policy" "model_store_read" {
   })
 }
 
-# Mountpoint for Amazon S3 CSI driver: pods mount weights read-only;
-# the driver caches blocks on node NVMe so a restart is not a re-download.
 resource "helm_release" "mountpoint_s3_csi" {
   name       = "aws-mountpoint-s3-csi-driver"
   namespace  = "kube-system"
@@ -64,5 +60,4 @@ resource "helm_release" "mountpoint_s3_csi" {
     }
   })]
 
-  depends_on = [module.eks]
 }

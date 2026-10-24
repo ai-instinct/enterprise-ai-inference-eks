@@ -20,7 +20,6 @@ module "vpc" {
   enable_nat_gateway = true
   single_nat_gateway = true
 
-  # GPU nodes pull large images and model weights; keep S3 traffic off the NAT
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -30,12 +29,10 @@ module "vpc" {
 
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = 1
-    # Karpenter discovers subnets by this tag
-    "karpenter.sh/discovery" = "${var.project}-eks"
+    "karpenter.sh/discovery"          = "${var.project}-eks"
   }
 }
 
-# S3 gateway endpoint: model weights and container layers bypass the NAT gateway
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = module.vpc.vpc_id
   service_name      = "com.amazonaws.${var.region}.s3"

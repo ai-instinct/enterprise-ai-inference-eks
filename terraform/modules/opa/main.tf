@@ -1,7 +1,3 @@
-# OPA as an Envoy external authorizer. The Istio ingress gateway consults
-# OPA on every request (action: CUSTOM) before anything reaches the router:
-# tenant auth, path allow-list, and max_tokens caps happen at the edge,
-# not on the GPU.
 
 resource "kubernetes_namespace" "opa" {
   metadata {
@@ -19,7 +15,7 @@ resource "kubernetes_config_map" "opa_policy" {
   }
 
   data = {
-    "inference_authz.rego" = file("${path.module}/../policies/inference_authz.rego")
+    "inference_authz.rego" = var.policy_rego
   }
 }
 
@@ -163,15 +159,13 @@ resource "kubernetes_service" "opa" {
   }
 }
 
-# Attach OPA to the ingress gateway: every /v1 request is authorized by
-# the Rego policy before it is routed.
 resource "kubectl_manifest" "authz_opa_gateway" {
   yaml_body = yamlencode({
     apiVersion = "security.istio.io/v1"
     kind       = "AuthorizationPolicy"
     metadata = {
       name      = "opa-ext-authz"
-      namespace = kubernetes_namespace.istio_system.metadata[0].name
+      namespace = var.istio_system_namespace
     }
     spec = {
       selector = { matchLabels = { istio = "ingress" } }
@@ -183,5 +177,5 @@ resource "kubectl_manifest" "authz_opa_gateway" {
     }
   })
 
-  depends_on = [helm_release.istiod, kubernetes_service.opa]
+  depends_on = [kubernetes_service.opa]
 }

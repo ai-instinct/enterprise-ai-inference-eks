@@ -58,15 +58,15 @@ Co-locating them makes decode inter-token latency jitter every time a prefill la
 
 | Layer | On EKS | What it does | Terraform |
 |---|---|---|---|
-| Edge | Istio ingress gateway on NLB | TLS, SSE pass-through, long idle timeouts | `istio.tf` |
-| Policy | OPA ext-authz at the gateway | Tenant auth, path allow-list, max_tokens caps | `opa.tf`, `policies/` |
-| Router | CPU Deployment (vLLM production-stack router) | Admission control, priority queues, prefix-aware routing | `vllm.tf` |
-| Prefill pool | vLLM prefill pods on p5 (H100) | Chunked prefill, long-prompt isolation | `vllm.tf` |
-| Decode pool | vLLM decode pods on p5e (H200), FP8 | Continuous batching, ITL tuning | `vllm.tf` |
-| Model store | S3 + Mountpoint CSI, NVMe cache | Fast cold starts, weights pinned by hash | `s3.tf` |
-| Autoscaling | KEDA on queue depth + KV util; Karpenter for nodes | Scale under slow cold starts, scale-to-zero when idle | `keda.tf`, `karpenter.tf` |
-| Observability | Prometheus, DCGM, Grafana | TTFT, TPOT, queue depth, KV util, hit rate | `observability.tf` |
-| Mesh | Istio strict mTLS + AuthorizationPolicies | Zero-trust between every tier | `istio.tf` |
+| Edge | Istio ingress gateway on NLB | TLS, SSE pass-through, long idle timeouts | `modules/istio` |
+| Policy | OPA ext-authz at the gateway | Tenant auth, path allow-list, max_tokens caps | `modules/opa`, `policies/` |
+| Router | CPU Deployment (vLLM production-stack router) | Admission control, priority queues, prefix-aware routing | `modules/vllm` |
+| Prefill pool | vLLM prefill pods on p5 (H100) | Chunked prefill, long-prompt isolation | `modules/vllm` |
+| Decode pool | vLLM decode pods on p5e (H200), FP8 | Continuous batching, ITL tuning | `modules/vllm` |
+| Model store | S3 + Mountpoint CSI, NVMe cache | Fast cold starts, weights pinned by hash | `modules/s3` |
+| Autoscaling | KEDA on queue depth + KV util; Karpenter for nodes | Scale under slow cold starts, scale-to-zero when idle | `modules/keda`, `modules/karpenter` |
+| Observability | Prometheus, DCGM, Grafana | TTFT, TPOT, queue depth, KV util, hit rate | `modules/observability` |
+| Mesh | Istio strict mTLS + AuthorizationPolicies | Zero-trust between every tier | `modules/istio` |
 
 ## Request lifecycle
 

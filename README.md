@@ -70,15 +70,15 @@ Prefill and decode are different workloads wearing the same model - **prefill is
 
 | Layer | Implementation | File |
 |---|---|---|
-| Network | VPC, 3 AZs, S3 gateway endpoint (weights bypass NAT) | [`vpc.tf`](terraform/vpc.tf) |
-| Cluster | EKS 1.31, managed CPU node group for the control tier | [`eks.tf`](terraform/eks.tf) |
-| GPU capacity | Karpenter NodePools: `gpu-prefill` (p5/H100) and `gpu-decode` (p5e/H200), Bottlerocket + 1 TB NVMe, scale-to-zero, GPU Operator + DCGM | [`karpenter.tf`](terraform/karpenter.tf) |
-| Serving | vLLM prefill pool (chunked prefill) + decode pool (FP8 weights & KV, prefix caching) + prefix-aware router | [`vllm.tf`](terraform/vllm.tf) |
-| Model store | S3 (versioned, KMS) + Mountpoint CSI with NVMe cache - weights pinned by hash, never "latest" | [`s3.tf`](terraform/s3.tf) |
-| Mesh | Istio strict mTLS, default-deny, gateway→router→engines as the only legal path, SSE-safe timeouts | [`istio.tf`](terraform/istio.tf) |
-| Policy | OPA as Envoy ext-authz at the gateway: tenant auth, path allow-list, per-tenant `max_tokens` caps - rejected requests cost zero GPU-seconds | [`opa.tf`](terraform/opa.tf) · [`inference_authz.rego`](policies/inference_authz.rego) |
-| Autoscaling | KEDA on queue depth + KV utilization (never CPU), slow scale-in for GPU cold starts | [`keda.tf`](terraform/keda.tf) |
-| Observability | kube-prometheus-stack + vLLM engine metrics + SLO alert rules (TTFT p95, KV saturation, batch-stuck, GPU-idle-with-queue) | [`observability.tf`](terraform/observability.tf) |
+| Network | VPC, 3 AZs, S3 gateway endpoint (weights bypass NAT) | [`modules/vpc`](terraform/modules/vpc) |
+| Cluster | EKS 1.31, managed CPU node group for the control tier | [`modules/eks`](terraform/modules/eks) |
+| GPU capacity | Karpenter NodePools: `gpu-prefill` (p5/H100) and `gpu-decode` (p5e/H200), Bottlerocket + 1 TB NVMe, scale-to-zero, GPU Operator + DCGM | [`modules/karpenter`](terraform/modules/karpenter) |
+| Serving | vLLM prefill pool (chunked prefill) + decode pool (FP8 weights & KV, prefix caching) + prefix-aware router | [`modules/vllm`](terraform/modules/vllm) |
+| Model store | S3 (versioned, KMS) + Mountpoint CSI with NVMe cache - weights pinned by hash, never "latest" | [`modules/s3`](terraform/modules/s3) |
+| Mesh | Istio strict mTLS, default-deny, gateway→router→engines as the only legal path, SSE-safe timeouts | [`modules/istio`](terraform/modules/istio) |
+| Policy | OPA as Envoy ext-authz at the gateway: tenant auth, path allow-list, per-tenant `max_tokens` caps - rejected requests cost zero GPU-seconds | [`modules/opa`](terraform/modules/opa) · [`inference_authz.rego`](policies/inference_authz.rego) |
+| Autoscaling | KEDA on queue depth + KV utilization (never CPU), slow scale-in for GPU cold starts | [`modules/keda`](terraform/modules/keda) |
+| Observability | kube-prometheus-stack + vLLM engine metrics + SLO alert rules (TTFT p95, KV saturation, batch-stuck, GPU-idle-with-queue) | [`modules/observability`](terraform/modules/observability) |
 
 ## Quick start
 
@@ -115,10 +115,10 @@ Weights never ship inside container images and are never pulled from the Hugging
 S3 model store (versioned, KMS)            terraform output -raw model_store_bucket
   s3://<bucket>/meta-llama/Llama-3.1-70B-Instruct/   <- you upload here, pinned per version
         |
-        v  Mountpoint for Amazon S3 CSI driver (read-only volume in vllm.tf)
+        v  Mountpoint for Amazon S3 CSI driver (read-only volume in modules/vllm)
 /models/meta-llama/Llama-3.1-70B-Instruct/           <- what the vLLM pods see
         |
-        v  block cache on the node's 1 TB NVMe data volume (karpenter.tf)
+        v  block cache on the node's 1 TB NVMe data volume (modules/karpenter)
 GPU HBM at engine startup (--model=/models/<model_id>)
 ```
 

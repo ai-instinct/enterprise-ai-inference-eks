@@ -1,6 +1,3 @@
-# Observability: the four engine signals (TTFT, TPOT, queue depth, KV
-# utilization) plus DCGM GPU telemetry. Prometheus scrapes the vLLM
-# /metrics endpoints; DCGM comes from the GPU Operator (karpenter.tf).
 
 resource "helm_release" "kube_prometheus_stack" {
   name             = "kube-prometheus-stack"
@@ -17,7 +14,6 @@ resource "helm_release" "kube_prometheus_stack" {
         retention      = "15d"
         scrapeInterval = "15s"
 
-        # Pick up the vLLM pods' prometheus.io/* annotations
         additionalScrapeConfigs = [
           {
             job_name = "vllm-engines"
@@ -56,11 +52,8 @@ resource "helm_release" "kube_prometheus_stack" {
     }
   })]
 
-  depends_on = [module.eks]
 }
 
-# Alert rules from the cheat sheet (problem 16): alert on the signals that
-# predict SLO breaches, not on raw utilization.
 resource "kubectl_manifest" "inference_alert_rules" {
   yaml_body = yamlencode({
     apiVersion = "monitoring.coreos.com/v1"

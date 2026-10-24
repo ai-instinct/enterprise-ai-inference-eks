@@ -1,45 +1,38 @@
-# Serving tier: a CPU router in front of disaggregated vLLM pools.
-# Prefill is compute-bound (chunked prefill, long-prompt isolation);
-# decode is bandwidth-bound (continuous batching, FP8 weights).
 
 locals {
   model_mount_path = "/models"
 
   vllm_common_env = {
     VLLM_WORKER_MULTIPROC_METHOD = "spawn"
-    HF_HUB_OFFLINE               = "1" # weights come from the S3 model store, never the hub
+    HF_HUB_OFFLINE               = "1"
   }
 }
 
 resource "kubernetes_service_account" "router" {
   metadata {
     name      = "inference-router"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
   }
 }
 
 resource "kubernetes_service_account" "prefill" {
   metadata {
     name      = "vllm-prefill"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
   }
 }
 
 resource "kubernetes_service_account" "decode" {
   metadata {
     name      = "vllm-decode"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
   }
 }
 
-# ---------------------------------------------------------------------------
-# Router: admission control, priority queues, prefix-hash routing.
-# Runs on the CPU control tier; stateless, scales on CPU.
-# ---------------------------------------------------------------------------
 resource "kubernetes_deployment" "router" {
   metadata {
     name      = "inference-router"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
     labels    = { app = "inference-router" }
   }
 
@@ -60,9 +53,7 @@ resource "kubernetes_deployment" "router" {
         node_selector        = { "workload-tier" = "control" }
 
         container {
-          name = "router"
-          # vLLM production-stack router: prefix-aware routing, per-tenant
-          # queues. Swap for llm-d / NVIDIA Dynamo router or your own.
+          name  = "router"
           image = "lmcache/lmstack-router:latest"
 
           args = [
@@ -70,7 +61,7 @@ resource "kubernetes_deployment" "router" {
             "--service-discovery=k8s",
             "--k8s-namespace=$(POD_NAMESPACE)",
             "--k8s-label-selector=tier=engine",
-            "--routing-logic=session", # prefix/session-affinity routing to the replica holding the KV
+            "--routing-logic=session",
           ]
 
           env {
@@ -102,7 +93,7 @@ resource "kubernetes_deployment" "router" {
 resource "kubernetes_service" "router" {
   metadata {
     name      = "inference-router"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
     labels    = { app = "inference-router" }
   }
 
@@ -117,20 +108,15 @@ resource "kubernetes_service" "router" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# Decode pool: continuous batching, FP8 weights, KV headroom.
-# One replica = one node's worth of GPUs with tensor parallelism inside
-# the NVLink domain.
-# ---------------------------------------------------------------------------
 resource "kubernetes_deployment" "vllm_decode" {
   metadata {
     name      = "vllm-decode"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
     labels    = { app = "vllm-decode", tier = "engine" }
   }
 
   spec {
-    replicas = 1 # KEDA owns the replica count after apply (see keda.tf)
+    replicas = 1
 
     selector {
       match_labels = { app = "vllm-decode" }
@@ -139,7 +125,7 @@ resource "kubernetes_deployment" "vllm_decode" {
     strategy {
       rolling_update {
         max_surge       = 1
-        max_unavailable = 0 # a decode replica holds live KV; never kill before replacement is Ready
+        max_unavailable = 0
       }
     }
 
@@ -163,7 +149,6 @@ resource "kubernetes_deployment" "vllm_decode" {
           effect   = "NoSchedule"
         }
 
-        # Allow in-flight generations to finish before the pod is killed
         termination_grace_period_seconds = 300
 
         container {
@@ -178,7 +163,7 @@ resource "kubernetes_deployment" "vllm_decode" {
             "--kv-cache-dtype=fp8",
             "--enable-prefix-caching",
             "--gpu-memory-utilization=0.92",
-            "--max-num-batched-tokens=8192", # bounds step time so TPOT stays under budget
+            "--max-num-batched-tokens=8192",
             "--port=8000",
           ]
 
@@ -221,7 +206,6 @@ resource "kubernetes_deployment" "vllm_decode" {
               path = "/health"
               port = 8000
             }
-            # weight load + CUDA graph capture takes minutes, not seconds
             failure_threshold = 120
             period_seconds    = 10
           }
@@ -241,7 +225,7 @@ resource "kubernetes_deployment" "vllm_decode" {
             driver    = "s3.csi.aws.com"
             read_only = true
             volume_attributes = {
-              bucketName = aws_s3_bucket.model_store.bucket
+              bucketName = var.model_bucket
             }
           }
         }
@@ -258,14 +242,14 @@ resource "kubernetes_deployment" "vllm_decode" {
   }
 
   lifecycle {
-    ignore_changes = [spec[0].replicas] # KEDA scales this
+    ignore_changes = [spec[0].replicas]
   }
 }
 
 resource "kubernetes_service" "vllm_decode" {
   metadata {
     name      = "vllm-decode"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
     labels    = { app = "vllm-decode" }
   }
 
@@ -280,15 +264,10 @@ resource "kubernetes_service" "vllm_decode" {
   }
 }
 
-# ---------------------------------------------------------------------------
-# Prefill pool: prefill-only replicas for long prompts. The router sends
-# prompts above a length threshold here so one 100K-token prefill never
-# stalls interactive decode traffic (problems 7 and 22).
-# ---------------------------------------------------------------------------
 resource "kubernetes_deployment" "vllm_prefill" {
   metadata {
     name      = "vllm-prefill"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
     labels    = { app = "vllm-prefill", tier = "engine" }
   }
 
@@ -330,7 +309,7 @@ resource "kubernetes_deployment" "vllm_prefill" {
             "--served-model-name=${var.model_id}",
             "--tensor-parallel-size=8",
             "--enable-chunked-prefill",
-            "--max-num-batched-tokens=4096", # chunk size: keeps each step bounded
+            "--max-num-batched-tokens=4096",
             "--enable-prefix-caching",
             "--gpu-memory-utilization=0.92",
             "--port=8000",
@@ -394,7 +373,7 @@ resource "kubernetes_deployment" "vllm_prefill" {
             driver    = "s3.csi.aws.com"
             read_only = true
             volume_attributes = {
-              bucketName = aws_s3_bucket.model_store.bucket
+              bucketName = var.model_bucket
             }
           }
         }
@@ -418,7 +397,7 @@ resource "kubernetes_deployment" "vllm_prefill" {
 resource "kubernetes_service" "vllm_prefill" {
   metadata {
     name      = "vllm-prefill"
-    namespace = kubernetes_namespace.inference.metadata[0].name
+    namespace = var.namespace
     labels    = { app = "vllm-prefill" }
   }
 

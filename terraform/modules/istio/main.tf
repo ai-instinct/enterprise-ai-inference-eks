@@ -1,6 +1,3 @@
-# Istio service mesh: strict mTLS between every tier (edge -> router ->
-# prefill -> decode) and an ingress gateway that terminates TLS and
-# streams SSE with long idle timeouts.
 
 resource "kubernetes_namespace" "istio_system" {
   metadata {
@@ -38,8 +35,6 @@ resource "helm_release" "istiod" {
     }
     meshConfig = {
       accessLogFile = "/dev/stdout"
-      # Register OPA as an external authorizer, invoked from
-      # AuthorizationPolicies with action: CUSTOM (see opa.tf)
       extensionProviders = [
         {
           name = "opa-ext-authz"
@@ -73,8 +68,7 @@ resource "helm_release" "istio_ingress" {
         "service.beta.kubernetes.io/aws-load-balancer-type"            = "external"
         "service.beta.kubernetes.io/aws-load-balancer-nlb-target-type" = "ip"
         "service.beta.kubernetes.io/aws-load-balancer-scheme"          = "internet-facing"
-        # SSE streams are long-lived; never cut an in-flight generation
-        "service.beta.kubernetes.io/aws-load-balancer-attributes" = "idle_timeout.timeout_seconds=4000"
+        "service.beta.kubernetes.io/aws-load-balancer-attributes"      = "idle_timeout.timeout_seconds=4000"
       }
     }
   })]
@@ -82,8 +76,6 @@ resource "helm_release" "istio_ingress" {
   depends_on = [helm_release.istiod]
 }
 
-# Strict mTLS mesh-wide: a pod without a valid SPIFFE identity cannot
-# talk to the router or the GPU pools at all.
 resource "kubectl_manifest" "mesh_mtls_strict" {
   yaml_body = yamlencode({
     apiVersion = "security.istio.io/v1"
@@ -100,9 +92,6 @@ resource "kubectl_manifest" "mesh_mtls_strict" {
   depends_on = [helm_release.istiod]
 }
 
-# Gateway + VirtualService for the OpenAI-compatible API.
-# Long timeout: a 70B generation at max_tokens can run minutes, and the
-# SSE stream must not be cut mid-generation.
 resource "kubectl_manifest" "inference_gateway" {
   yaml_body = yamlencode({
     apiVersion = "networking.istio.io/v1"
@@ -149,7 +138,7 @@ resource "kubectl_manifest" "inference_virtualservice" {
           ]
           timeout = "3600s"
           retries = {
-            attempts = 0 # never replay a generation request
+            attempts = 0
           }
         }
       ]
@@ -159,8 +148,6 @@ resource "kubectl_manifest" "inference_virtualservice" {
   depends_on = [kubectl_manifest.inference_gateway]
 }
 
-# Default-deny inside the inference namespace, then explicitly allow
-# only the legal request path: gateway -> router -> prefill/decode.
 resource "kubectl_manifest" "authz_default_deny" {
   yaml_body = yamlencode({
     apiVersion = "security.istio.io/v1"
@@ -169,7 +156,7 @@ resource "kubectl_manifest" "authz_default_deny" {
       name      = "default-deny"
       namespace = kubernetes_namespace.inference.metadata[0].name
     }
-    spec = {} # empty spec denies everything not explicitly allowed
+    spec = {}
   })
 
   depends_on = [helm_release.istiod]
@@ -220,7 +207,6 @@ resource "kubectl_manifest" "authz_router_to_engines" {
           ]
         },
         {
-          # prefill pushes KV blocks to decode (disaggregated serving)
           from = [
             { source = { principals = ["cluster.local/ns/inference/sa/vllm-prefill"] } }
           ]

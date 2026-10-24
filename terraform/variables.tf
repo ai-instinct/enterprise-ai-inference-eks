@@ -37,13 +37,13 @@ variable "vllm_image" {
 variable "gpu_prefill_instance_types" {
   description = "Instance types for the prefill pool (compute-bound: wants FLOPs)"
   type        = list(string)
-  default     = ["p5.48xlarge"] # 8x H100
+  default     = ["p5.48xlarge"]
 }
 
 variable "gpu_decode_instance_types" {
   description = "Instance types for the decode pool (bandwidth-bound: wants HBM capacity/bandwidth)"
   type        = list(string)
-  default     = ["p5e.48xlarge"] # 8x H200
+  default     = ["p5e.48xlarge"]
 }
 
 variable "gpu_nodes_max" {
@@ -70,11 +70,3 @@ variable "istio_version" {
   default     = "1.24.2"
 }
 
-variable "tenant_token_budgets" {
-  description = "Per-tenant admission budgets enforced by OPA at the gateway (tokens per minute)"
-  type        = map(number)
-  default = {
-    interactive = 600000
-    batch       = 2000000
-  }
-}

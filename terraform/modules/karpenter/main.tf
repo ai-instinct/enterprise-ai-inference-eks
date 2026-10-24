@@ -2,7 +2,7 @@ module "karpenter" {
   source  = "terraform-aws-modules/eks/aws//modules/karpenter"
   version = "~> 20.31"
 
-  cluster_name          = module.eks.cluster_name
+  cluster_name          = var.cluster_name
   enable_v1_permissions = true
 
   enable_pod_identity             = true
@@ -10,8 +10,7 @@ module "karpenter" {
 
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-    # GPU nodes pre-pull model weights from the model store at boot
-    ModelStoreRead = aws_iam_policy.model_store_read.arn
+    ModelStoreRead               = var.model_store_read_policy_arn
   }
 }
 
@@ -25,8 +24,8 @@ resource "helm_release" "karpenter" {
 
   values = [yamlencode({
     settings = {
-      clusterName       = module.eks.cluster_name
-      clusterEndpoint   = module.eks.cluster_endpoint
+      clusterName       = var.cluster_name
+      clusterEndpoint   = var.cluster_endpoint
       interruptionQueue = module.karpenter.queue_name
     }
     nodeSelector = {
@@ -37,8 +36,6 @@ resource "helm_release" "karpenter" {
   depends_on = [module.karpenter]
 }
 
-# Shared EC2NodeClass: Bottlerocket with a large NVMe data volume for
-# container images and pre-pulled model weights (fast cold starts, problem 20).
 resource "kubectl_manifest" "gpu_node_class" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.k8s.aws/v1"
@@ -53,10 +50,10 @@ resource "kubectl_manifest" "gpu_node_class" {
       ]
       role = module.karpenter.node_iam_role_name
       subnetSelectorTerms = [
-        { tags = { "karpenter.sh/discovery" = module.eks.cluster_name } }
+        { tags = { "karpenter.sh/discovery" = var.cluster_name } }
       ]
       securityGroupSelectorTerms = [
-        { tags = { "karpenter.sh/discovery" = module.eks.cluster_name } }
+        { tags = { "karpenter.sh/discovery" = var.cluster_name } }
       ]
       blockDeviceMappings = [
         {
@@ -74,8 +71,6 @@ resource "kubectl_manifest" "gpu_node_class" {
   depends_on = [helm_release.karpenter]
 }
 
-# Prefill pool: compute-bound (one big matmul over all prompt tokens).
-# Sized for FLOPs per dollar.
 resource "kubectl_manifest" "nodepool_gpu_prefill" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.sh/v1"
@@ -101,7 +96,6 @@ resource "kubectl_manifest" "nodepool_gpu_prefill" {
           ]
         }
       }
-      # Scale to zero when idle; consolidate aggressively off-peak
       limits = {
         "nvidia.com/gpu" = var.gpu_nodes_max * 8
       }
@@ -115,8 +109,6 @@ resource "kubectl_manifest" "nodepool_gpu_prefill" {
   depends_on = [kubectl_manifest.gpu_node_class]
 }
 
-# Decode pool: memory-bandwidth-bound (re-reads weights + KV every token).
-# Sized for HBM capacity and bandwidth (H200-class), not FLOPs.
 resource "kubectl_manifest" "nodepool_gpu_decode" {
   yaml_body = yamlencode({
     apiVersion = "karpenter.sh/v1"
@@ -155,7 +147,6 @@ resource "kubectl_manifest" "nodepool_gpu_decode" {
   depends_on = [kubectl_manifest.gpu_node_class]
 }
 
-# NVIDIA device plugin + DCGM ship via the GPU Operator
 resource "helm_release" "gpu_operator" {
   name             = "gpu-operator"
   namespace        = "gpu-operator"
@@ -165,7 +156,6 @@ resource "helm_release" "gpu_operator" {
   version          = "v24.9.1"
 
   values = [yamlencode({
-    # Bottlerocket ships the NVIDIA driver; the operator manages the rest
     driver  = { enabled = false }
     toolkit = { enabled = false }
     dcgmExporter = {
@@ -182,5 +172,4 @@ resource "helm_release" "gpu_operator" {
     }
   })]
 
-  depends_on = [module.eks]
 }
