@@ -1,0 +1,15 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.auto.tfvars.example
+crash.log
+override.tf
+override.tf.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
