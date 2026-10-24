@@ -17,11 +17,7 @@ disaggregated vLLM prefill/decode pools, Karpenter-provisioned GPU capacity with
 Istio strict-mTLS zero-trust mesh, OPA policy enforcement at the edge, and inference-native
 autoscaling and observability. All as Terraform.
 
-[![Terraform](https://img.shields.io/badge/Terraform-%E2%89%A5%201.5-7B42BC?logo=terraform&logoColor=white)](terraform/)
-[![Amazon EKS](https://img.shields.io/badge/Amazon%20EKS-1.31-FF9900?logo=amazonwebservices&logoColor=white)](terraform/eks.tf)
-[![Istio](https://img.shields.io/badge/Istio-1.24-466BB0?logo=istio&logoColor=white)](terraform/istio.tf)
-[![OPA](https://img.shields.io/badge/OPA-ext--authz-7178E0?logo=openpolicyagent&logoColor=white)](terraform/opa.tf)
-[![vLLM](https://img.shields.io/badge/vLLM-v0.8-00A3E0)](terraform/vllm.tf)
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](LICENSE)
 
 [Architecture](docs/architecture.md) · [Cheat Sheet](docs/cheat-sheet.md) · [Zero-Trust (Istio + OPA)](docs/zero-trust-istio-opa.md) · [Original PDF](docs/ai-inference-on-eks-cheat-sheet.pdf)
