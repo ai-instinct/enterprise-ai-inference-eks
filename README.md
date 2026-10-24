@@ -144,24 +144,6 @@ A taste - the numbers worth memorizing:
 | Interactive SLO (typical) | TTFT p95 < 500 ms · ITL p95 < 50 ms |
 | GPU cold start | 5-15 min bare · 1-3 min with pre-pulled weights |
 
-## Repo layout
-
-```text
-.
-├── terraform/            # the whole platform, layer by layer
-│   ├── vpc.tf eks.tf karpenter.tf s3.tf
-│   ├── istio.tf opa.tf
-│   ├── vllm.tf keda.tf observability.tf
-│   └── variables.tf outputs.tf providers.tf versions.tf
-├── policies/
-│   └── inference_authz.rego   # OPA gateway policy (tenants, paths, token caps)
-└── docs/
-    ├── architecture.md        # the design, explained
-    ├── cheat-sheet.md         # 25 problems, distilled
-    ├── zero-trust-istio-opa.md
-    └── ai-inference-on-eks-cheat-sheet.pdf
-```
-
 ## Design principles
 
 1. **Reject work before it reaches a GPU.** OPA at the gateway, admission control at the router - a bad request should cost CPU microseconds, not KV memory.
