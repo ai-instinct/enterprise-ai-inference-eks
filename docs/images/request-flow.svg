@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="330" viewBox="0 0 880 330" font-family="'Courier New', ui-monospace, monospace">
+  <defs>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="1.6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="1" stop-color="#101830"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="880" height="330" rx="10" fill="url(#bg)"/>
+  <text x="24" y="34" fill="#8be9fd" font-size="15" filter="url(#glow)">$ enterprise-ai-inference-eks</text>
+  <text x="24" y="54" fill="#5a6b8c" font-size="11">request path: edge -&gt; router -&gt; prefill -&gt; decode, SSE tokens stream back</text>
+
+  <!-- main request lane -->
+  <line x1="130" y1="140" x2="200" y2="140" stroke="#2a3a5c" stroke-width="2"/>
+  <line x1="330" y1="140" x2="380" y2="140" stroke="#2a3a5c" stroke-width="2"/>
+  <line x1="500" y1="140" x2="550" y2="140" stroke="#2a3a5c" stroke-width="2"/>
+  <line x1="680" y1="140" x2="722" y2="140" stroke="#2a3a5c" stroke-width="2"/>
+  <text x="140" y="132" fill="#4d5d7e" font-size="9">TLS</text>
+  <text x="336" y="132" fill="#4d5d7e" font-size="9">mTLS</text>
+  <text x="506" y="132" fill="#4d5d7e" font-size="9">mTLS</text>
+  <text x="701" y="98" fill="#4d5d7e" font-size="9" text-anchor="middle">KV blocks</text>
+
+  <!-- client -->
+  <rect x="30" y="112" width="100" height="56" rx="8" fill="#121a30" stroke="#6272a4" stroke-width="1.5"/>
+  <text x="80" y="136" fill="#f8f8f2" font-size="12" text-anchor="middle">client</text>
+  <text x="80" y="153" fill="#5a6b8c" font-size="9" text-anchor="middle">browser / SDK</text>
+
+  <!-- istio gateway -->
+  <rect x="200" y="104" width="130" height="64" rx="8" fill="#121a30" stroke="#466BB0" stroke-width="1.5"/>
+  <text x="265" y="128" fill="#7ea6e0" font-size="12" text-anchor="middle">istio gateway</text>
+  <text x="265" y="145" fill="#5a6b8c" font-size="9" text-anchor="middle">NLB, SSE pass-through</text>
+  <text x="265" y="159" fill="#5a6b8c" font-size="9" text-anchor="middle">strict mTLS mesh</text>
+
+  <!-- opa under gateway -->
+  <line x1="265" y1="168" x2="265" y2="210" stroke="#7178E0" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <rect x="195" y="210" width="140" height="52" rx="8" fill="#121a30" stroke="#7178E0" stroke-width="1.5"/>
+  <text x="265" y="231" fill="#9aa0f5" font-size="12" text-anchor="middle">OPA ext-authz</text>
+  <text x="265" y="248" fill="#5a6b8c" font-size="9" text-anchor="middle">tenant, paths, token caps</text>
+
+  <!-- authz check pulse: gateway -> OPA -> gateway at 0.6s-1.8s of the 8s cycle -->
+  <circle r="3.5" fill="#9aa0f5" filter="url(#glow)">
+    <animateMotion path="M265,168 L265,210 L265,168" dur="8s" repeatCount="indefinite"
+      calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.075;0.225;1"/>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.075;0.09;0.21;0.225;1"/>
+  </circle>
+
+  <!-- router -->
+  <rect x="380" y="104" width="120" height="64" rx="8" fill="#121a30" stroke="#50fa7b" stroke-width="1.5"/>
+  <text x="440" y="128" fill="#50fa7b" font-size="12" text-anchor="middle">router</text>
+  <text x="440" y="145" fill="#5a6b8c" font-size="9" text-anchor="middle">admission, queues</text>
+  <text x="440" y="159" fill="#5a6b8c" font-size="9" text-anchor="middle">prefix-hash routing</text>
+
+  <!-- prefill -->
+  <rect x="550" y="104" width="130" height="64" rx="8" fill="#1a1626" stroke="#FF9900" stroke-width="1.5"/>
+  <text x="615" y="126" fill="#ffb84d" font-size="12" text-anchor="middle">prefill pool</text>
+  <text x="615" y="143" fill="#5a6b8c" font-size="9" text-anchor="middle">p5 H100, chunked</text>
+  <text x="615" y="157" fill="#5a6b8c" font-size="9" text-anchor="middle">compute-bound</text>
+
+  <!-- decode -->
+  <rect x="722" y="104" width="134" height="64" rx="8" fill="#1a1626" stroke="#FF9900" stroke-width="1.5"/>
+  <text x="789" y="126" fill="#ffb84d" font-size="12" text-anchor="middle">decode pool</text>
+  <text x="789" y="143" fill="#5a6b8c" font-size="9" text-anchor="middle">p5e H200, FP8</text>
+  <text x="789" y="157" fill="#5a6b8c" font-size="9" text-anchor="middle">bandwidth-bound</text>
+
+  <!-- karpenter note under gpu pools -->
+  <text x="703" y="186" fill="#4d5d7e" font-size="9" text-anchor="middle">Karpenter: scale to zero when idle</text>
+
+  <!-- s3 model store -->
+  <rect x="520" y="240" width="200" height="56" rx="8" fill="#121a30" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="620" y="262" fill="#7ea6e0" font-size="12" text-anchor="middle">S3 model store</text>
+  <text x="620" y="279" fill="#5a6b8c" font-size="9" text-anchor="middle">weights pinned by hash</text>
+  <line x1="590" y1="240" x2="600" y2="168" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"/>
+  <line x1="700" y1="240" x2="780" y2="168" stroke="#3b82f6" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"/>
+  <text x="732" y="222" fill="#3b82f6" font-size="9">Mountpoint CSI /models</text>
+
+  <!-- weight blocks loading onto gpu nodes -->
+  <rect width="7" height="7" rx="1.5" fill="#3b82f6" filter="url(#glow)">
+    <animateMotion path="M586,236 L596,164" dur="1.6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1.6s" repeatCount="indefinite"/>
+  </rect>
+  <rect width="7" height="7" rx="1.5" fill="#3b82f6" filter="url(#glow)">
+    <animateMotion path="M696,236 L776,164" dur="1.6s" begin="0.8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.15;0.85;1" dur="1.6s" begin="0.8s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- request dot: client -> gateway -> router -> prefill -> decode at 0s-3.2s -->
+  <circle r="4.5" fill="#8be9fd" filter="url(#glow)">
+    <animateMotion path="M80,140 L789,140" dur="8s" repeatCount="indefinite"
+      calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.4;1"/>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="1;1;0;0" keyTimes="0;0.39;0.41;1"/>
+  </circle>
+
+  <!-- SSE token stream back along the top arc at 3.4s-5.6s -->
+  <path id="sse" d="M789,104 C 700,56 220,56 80,112" fill="none" stroke="#2a3a5c" stroke-width="1" stroke-dasharray="2 5"/>
+  <text x="430" y="66" fill="#4d5d7e" font-size="9" text-anchor="middle">SSE token stream</text>
+  <circle r="3" fill="#50fa7b" filter="url(#glow)">
+    <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear"
+      keyPoints="0;0;1;1" keyTimes="0;0.425;0.65;1"><mpath href="#sse"/></animateMotion>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.425;0.44;0.635;0.65;1"/>
+  </circle>
+  <circle r="3" fill="#50fa7b" filter="url(#glow)">
+    <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear"
+      keyPoints="0;0;1;1" keyTimes="0;0.465;0.69;1"><mpath href="#sse"/></animateMotion>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.465;0.48;0.675;0.69;1"/>
+  </circle>
+  <circle r="3" fill="#50fa7b" filter="url(#glow)">
+    <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear"
+      keyPoints="0;0;1;1" keyTimes="0;0.505;0.73;1"><mpath href="#sse"/></animateMotion>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.505;0.52;0.715;0.73;1"/>
+  </circle>
+  <circle r="3" fill="#50fa7b" filter="url(#glow)">
+    <animateMotion dur="8s" repeatCount="indefinite" calcMode="linear"
+      keyPoints="0;0;1;1" keyTimes="0;0.545;0.77;1"><mpath href="#sse"/></animateMotion>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.545;0.56;0.755;0.77;1"/>
+  </circle>
+
+  <!-- deny branch: a bad request bounced at the edge at 6.2s-7.8s -->
+  <circle r="4" fill="#ff5555" filter="url(#glow)">
+    <animateMotion path="M80,140 L265,140 L265,236 L120,236" dur="8s" repeatCount="indefinite"
+      calcMode="linear" keyPoints="0;0;1;1" keyTimes="0;0.775;0.975;1"/>
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.775;0.79;0.96;0.975;1"/>
+  </circle>
+  <text x="112" y="252" fill="#ff5555" font-size="9" opacity="0">
+    429 rejected, zero GPU-seconds
+    <animate attributeName="opacity" dur="8s" repeatCount="indefinite"
+      values="0;0;1;1;0;0" keyTimes="0;0.86;0.88;0.97;0.99;1"/>
+  </text>
+
+  <!-- footer -->
+  <text x="24" y="316" fill="#2f3f61" font-size="9">istio strict mTLS everywhere · OPA decides before a GPU cycle is spent · KEDA scales on queue depth + KV util</text>
+</svg>

@@ -81,7 +81,7 @@ resource "kubectl_manifest" "inference_alert_rules" {
               for    = "5m"
               labels = { severity = "page" }
               annotations = {
-                summary = "p95 TTFT above 500ms for 5m — check queue wait vs prefill before touching the model"
+                summary = "p95 TTFT above 500ms for 5m - check queue wait vs prefill before touching the model"
               }
             },
             {
@@ -90,7 +90,7 @@ resource "kubectl_manifest" "inference_alert_rules" {
               for    = "10m"
               labels = { severity = "warn" }
               annotations = {
-                summary = "KV cache above 90% sustained — preemptions imminent; scale decode or quantize KV"
+                summary = "KV cache above 90% sustained - preemptions imminent; scale decode or quantize KV"
               }
             },
             {
@@ -99,7 +99,7 @@ resource "kubectl_manifest" "inference_alert_rules" {
               for    = "10m"
               labels = { severity = "warn" }
               annotations = {
-                summary = "Batch stuck at 1-2 with a waiting queue — GPU is waiting on bandwidth or the scheduler"
+                summary = "Batch stuck at 1-2 with a waiting queue - GPU is waiting on bandwidth or the scheduler"
               }
             },
             {
@@ -108,7 +108,7 @@ resource "kubectl_manifest" "inference_alert_rules" {
               for    = "10m"
               labels = { severity = "warn" }
               annotations = {
-                summary = "SM activity under 40% with requests queued — look at the CPU front end, batch size, or kernel launches"
+                summary = "SM activity under 40% with requests queued - look at the CPU front end, batch size, or kernel launches"
               }
             }
           ]
