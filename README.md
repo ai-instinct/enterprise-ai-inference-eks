@@ -27,7 +27,7 @@ autoscaling and observability. All as Terraform.
 ---
 
 <p align="center">
-  <img src="docs/images/request-flow.svg" alt="Animated request flow: client to Istio gateway (OPA authz) to router to prefill to decode, with SSE tokens streaming back and weights loading from the S3 model store" width="880" />
+  <img src="docs/images/request-flow.svg" alt="Reference architecture: animated request path from the internet through NLB, Istio gateway with OPA authz, inference router, and disaggregated vLLM prefill/decode GPU pools, with S3 model store, autoscaling and zero-trust control panels" width="900" />
 </p>
 
 ## The architecture
